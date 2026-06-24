@@ -376,6 +376,47 @@
     .estado-select[data-estado="Cerrado"] { border-color: #22c55e; }
     .estado-select[data-estado="Descartado"] { border-color: #ef4444; }
 
+    /* Delete */
+    .btn-delete {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      color: rgba(27,23,23,0.3);
+      padding: 4px 6px;
+      border-radius: 4px;
+      line-height: 1;
+      transition: color 0.15s, background 0.15s;
+    }
+    .btn-delete:hover { color: var(--cherry); background: rgba(129,1,0,0.06); }
+
+    .cb-lead, .cb-all {
+      width: 15px; height: 15px;
+      accent-color: var(--cherry);
+      cursor: pointer;
+    }
+
+    .bulk-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .btn-delete-selected {
+      background: var(--cherry);
+      color: var(--white);
+      border: none;
+      border-radius: 6px;
+      padding: 7px 16px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-delete-selected:hover { background: var(--maroon); }
+
     /* Empty state */
     .empty-state {
       text-align: center;
@@ -605,22 +646,32 @@
 
       <div class="result-count" id="result-count"></div>
 
+      <!-- Bulk delete bar -->
+      <div class="bulk-bar" id="bulk-bar">
+        <button class="btn-delete-selected" id="btn-delete-selected">
+          Eliminar <span id="bulk-count">0</span> seleccionados
+        </button>
+        <span style="font-size:12px;color:var(--noir-muted)">Esta acción no se puede deshacer</span>
+      </div>
+
       <!-- Table -->
       <div class="table-wrapper">
         <table>
           <thead>
             <tr>
+              <th style="width:36px;padding-right:4px"><input type="checkbox" id="cb-select-all" class="cb-all" /></th>
               <th>Nombre</th>
               <th>Email</th>
               <th>WhatsApp</th>
               <th>Fecha de registro</th>
               <th>Info solicitada</th>
               <th>Estado</th>
+              <th style="width:44px"></th>
             </tr>
           </thead>
           <tbody id="leads-body">
             <tr class="loading-row">
-              <td colspan="6">
+              <td colspan="8">
                 <div class="spinner"></div>
                 <div>Cargando leads…</div>
               </td>
@@ -716,6 +767,13 @@
       });
     }
 
+    async function deleteLeads(ids) {
+      const filter = ids.length === 1
+        ? `id=eq.${ids[0]}`
+        : `id=in.(${ids.join(',')})`;
+      return sbFetch(`leads?${filter}`, { method: 'DELETE', prefer: 'return=minimal' });
+    }
+
     /* ── DASHBOARD INIT ── */
     async function initDashboard() {
       // Ensure estado column exists (best-effort; migration should be run separately)
@@ -727,7 +785,7 @@
       } catch (err) {
         showToast('Error al cargar leads: ' + err.message, true);
         document.getElementById('leads-body').innerHTML =
-          `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--noir-muted)">Error al conectar con Supabase.</td></tr>`;
+          `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--noir-muted)">Error al conectar con Supabase.</td></tr>`;
       }
     }
 
@@ -1049,13 +1107,14 @@
       if (!leads.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="6">
+            <td colspan="8">
               <div class="empty-state">
                 <div style="font-size:28px">📋</div>
                 <p>No se encontraron leads con los filtros actuales.</p>
               </div>
             </td>
           </tr>`;
+        syncDeleteBar();
         return;
       }
 
@@ -1071,7 +1130,8 @@
           : `<span style="color:var(--noir-muted)">—</span>`;
 
         return `
-          <tr>
+          <tr data-id="${lead.id}">
+            <td style="padding-right:4px"><input type="checkbox" class="cb-lead" data-id="${lead.id}" onchange="syncDeleteBar()" /></td>
             <td class="td-name">${escHtml(lead.nombre || '—')}</td>
             <td class="td-email">${escHtml(lead.email || '—')}</td>
             <td class="td-wa">${waLink}</td>
@@ -1087,8 +1147,13 @@
                 onchange="onEstadoChange(this)"
               >${estadoOptions}</select>
             </td>
+            <td style="text-align:center">
+              <button class="btn-delete" title="Eliminar lead" onclick="onDeleteLead('${lead.id}')">&#128465;</button>
+            </td>
           </tr>`;
       }).join('');
+
+      syncDeleteBar();
     }
 
     async function onEstadoChange(sel) {
@@ -1115,6 +1180,74 @@
         sel.dataset.estado = sel.value;
       }
     }
+
+    /* ── DELETE ── */
+    async function onDeleteLead(id) {
+      if (!confirm('¿Eliminar este lead? Esta acción no se puede deshacer.')) return;
+      try {
+        await deleteLeads([id]);
+        allLeads = allLeads.filter(l => String(l.id) !== String(id));
+        filteredLeads = filteredLeads.filter(l => String(l.id) !== String(id));
+        renderMetrics(allLeads);
+        renderCharts(allLeads);
+        renderTable(filteredLeads);
+        updateResultCount();
+        showToast('Lead eliminado');
+      } catch (err) {
+        showToast('Error al eliminar: ' + err.message, true);
+      }
+    }
+
+    async function onDeleteSelected() {
+      const checked = [...document.querySelectorAll('.cb-lead:checked')];
+      if (!checked.length) return;
+      const ids = checked.map(cb => cb.dataset.id);
+      const n = ids.length;
+      if (!confirm(`¿Eliminar este lead? Esta acción no se puede deshacer.`.replace('este lead', `${n} lead${n > 1 ? 's' : ''}`))) return;
+      try {
+        await deleteLeads(ids);
+        const idSet = new Set(ids.map(String));
+        allLeads = allLeads.filter(l => !idSet.has(String(l.id)));
+        filteredLeads = filteredLeads.filter(l => !idSet.has(String(l.id)));
+        renderMetrics(allLeads);
+        renderCharts(allLeads);
+        renderTable(filteredLeads);
+        updateResultCount();
+        showToast(`${n} lead${n > 1 ? 's eliminados' : ' eliminado'}`);
+      } catch (err) {
+        showToast('Error al eliminar: ' + err.message, true);
+      }
+    }
+
+    function syncDeleteBar() {
+      const checked = document.querySelectorAll('.cb-lead:checked');
+      const all = document.querySelectorAll('.cb-lead');
+      const bar = document.getElementById('bulk-bar');
+      const selectAll = document.getElementById('cb-select-all');
+
+      bar.style.display = checked.length > 0 ? 'flex' : 'none';
+      document.getElementById('bulk-count').textContent = checked.length;
+
+      if (selectAll) {
+        selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+        selectAll.checked = all.length > 0 && checked.length === all.length;
+      }
+    }
+
+    function onSelectAll(cb) {
+      document.querySelectorAll('.cb-lead').forEach(el => { el.checked = cb.checked; });
+      syncDeleteBar();
+    }
+
+    function updateResultCount() {
+      document.getElementById('result-count').textContent =
+        filteredLeads.length === allLeads.length
+          ? `${allLeads.length} leads`
+          : `${filteredLeads.length} de ${allLeads.length} leads`;
+    }
+
+    document.getElementById('cb-select-all').addEventListener('change', function() { onSelectAll(this); });
+    document.getElementById('btn-delete-selected').addEventListener('click', onDeleteSelected);
 
     /* ── EXPORT CSV ── */
     document.getElementById('btn-export').addEventListener('click', () => {
