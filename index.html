@@ -441,6 +441,70 @@
       .main { padding: 20px 14px 48px; }
       .header { padding: 0 16px; }
     }
+
+    /* ── CHARTS ── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    @media (min-width: 640px) {
+      .charts-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .chart-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 20px 18px 16px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chart-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--cherry);
+    }
+
+    .chart-card-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 14px;
+    }
+
+    .chart-wrap { position: relative; height: 220px; }
+    .chart-wrap-sm { position: relative; height: 190px; }
+
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      margin-top: 12px;
+    }
+
+    .chart-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--noir-muted);
+      font-weight: 500;
+    }
+
+    .chart-legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -491,6 +555,27 @@
           <div class="metric-label">Tasa de Conversión</div>
           <div class="metric-value" id="m-rate">—</div>
           <div class="metric-sub">solicito info / total</div>
+        </div>
+      </div>
+
+      <!-- Charts 2x2 -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-card-title">Leads por día</div>
+          <div class="chart-wrap"><canvas id="chart-daily"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Embudo de conversión</div>
+          <div class="chart-wrap"><canvas id="chart-funnel"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Estados</div>
+          <div class="chart-wrap-sm"><canvas id="chart-estados"></canvas></div>
+          <div id="estados-legend" class="chart-legend"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Países de origen</div>
+          <div class="chart-wrap"><canvas id="chart-paises"></canvas></div>
         </div>
       </div>
 
@@ -550,6 +635,7 @@
   <!-- Toast -->
   <div id="toast"></div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script>
     /* ── CONFIG ── */
     const SUPABASE_URL = 'https://zggckdkddbwbkauttvjg.supabase.co';
@@ -636,6 +722,7 @@
       try {
         allLeads = await fetchLeads();
         renderMetrics(allLeads);
+        renderCharts(allLeads);
         applyFilters();
       } catch (err) {
         showToast('Error al cargar leads: ' + err.message, true);
@@ -658,6 +745,255 @@
       document.getElementById('m-today').textContent = todayLeads;
       document.getElementById('m-today-date').textContent = formatDate(new Date()).split(' ')[0];
       document.getElementById('m-rate').textContent = rate;
+    }
+
+    /* ── CHARTS ── */
+    const chartInstances = {};
+
+    const COUNTRY_MAP = {
+      '1': 'USA/Canadá', '7': 'Rusia', '20': 'Egipto',
+      '27': 'Sudáfrica', '31': 'Países Bajos', '32': 'Bélgica',
+      '33': 'Francia', '34': 'España', '39': 'Italia',
+      '41': 'Suiza', '44': 'Reino Unido', '49': 'Alemania',
+      '51': 'Perú', '52': 'México', '54': 'Argentina',
+      '55': 'Brasil', '56': 'Chile', '57': 'Colombia',
+      '58': 'Venezuela', '351': 'Portugal', '502': 'Guatemala',
+      '503': 'El Salvador', '504': 'Honduras', '505': 'Nicaragua',
+      '506': 'Costa Rica', '507': 'Panamá', '591': 'Bolivia',
+      '593': 'Ecuador', '595': 'Paraguay', '598': 'Uruguay',
+      '965': 'Kuwait', '966': 'Arabia Saudí', '968': 'Omán',
+      '971': 'UAE', '972': 'Israel', '973': 'Bahréin', '974': 'Qatar',
+    };
+
+    function getCountry(wa) {
+      if (!wa) return 'Desconocido';
+      const digits = String(wa).replace(/\D/g, '');
+      for (const len of [3, 2, 1]) {
+        const key = digits.slice(0, len);
+        if (COUNTRY_MAP[key]) return COUNTRY_MAP[key];
+      }
+      return 'Otro';
+    }
+
+    // Plugin: center total text on doughnut
+    const centerTextPlugin = {
+      id: 'centerText',
+      afterDraw(chart) {
+        if (chart.config.type !== 'doughnut') return;
+        const { ctx, chartArea: { left, right, top, bottom } } = chart;
+        const cx = (left + right) / 2;
+        const cy = (top + bottom) / 2;
+        const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+        ctx.save();
+        ctx.font = "700 26px 'Playfair Display', serif";
+        ctx.fillStyle = '#1B1717';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(total, cx, cy);
+        ctx.restore();
+      }
+    };
+
+    // Plugin: draw label at end of horizontal bars
+    const barEndLabelPlugin = {
+      id: 'barEndLabel',
+      afterDatasetsDraw(chart, _args, opts) {
+        if (!opts || !opts.labels) return;
+        const { ctx } = chart;
+        chart.data.datasets.forEach((ds, i) => {
+          chart.getDatasetMeta(i).data.forEach((bar, idx) => {
+            const val = ds.data[idx];
+            const label = opts.labels[idx] !== undefined ? opts.labels[idx] : String(val);
+            const props = bar.getProps(['x', 'y'], true);
+            ctx.save();
+            ctx.font = '500 11px Inter, sans-serif';
+            ctx.fillStyle = 'rgba(27,23,23,0.65)';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, props.x + 7, props.y);
+            ctx.restore();
+          });
+        });
+      }
+    };
+
+    Chart.register(centerTextPlugin, barEndLabelPlugin);
+
+    function destroyChart(key) {
+      if (chartInstances[key]) { chartInstances[key].destroy(); delete chartInstances[key]; }
+    }
+
+    function renderCharts(leads) {
+      Chart.defaults.font.family = "'Inter', sans-serif";
+      Chart.defaults.color = 'rgba(27,23,23,0.5)';
+      renderDailyChart(leads);
+      renderFunnelChart(leads);
+      renderEstadosChart(leads);
+      renderPaisesChart(leads);
+    }
+
+    function renderDailyChart(leads) {
+      destroyChart('daily');
+      const labels = [], counts = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const iso = d.toISOString().slice(0, 10);
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        labels.push(`${dd}/${mm}`);
+        counts.push(leads.filter(l => l.created_at && l.created_at.startsWith(iso)).length);
+      }
+      chartInstances.daily = new Chart(document.getElementById('chart-daily'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            data: counts,
+            borderColor: '#810100',
+            backgroundColor: 'rgba(129,1,0,0.08)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#810100',
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderWidth: 2,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+          scales: {
+            x: { grid: { color: 'rgba(27,23,23,0.05)' }, ticks: { font: { size: 11 } } },
+            y: { grid: { color: 'rgba(27,23,23,0.05)' }, beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 }, precision: 0 } }
+          }
+        }
+      });
+    }
+
+    function renderFunnelChart(leads) {
+      destroyChart('funnel');
+      const total    = leads.length;
+      const vieron   = leads.filter(l => l.solicito_info !== null && l.solicito_info !== undefined).length;
+      const info     = leads.filter(l => l.solicito_info === true).length;
+      const llamada  = leads.filter(l => l.estado === 'Llamada agendada').length;
+      const data     = [total, vieron, info, llamada];
+      const stepLabels = ['Total leads', 'Vieron el vídeo', 'Solicitaron info', 'Llamada agendada'];
+
+      const endLabels = data.map((val, i) => {
+        if (i === 0) return String(val);
+        const prev = data[i - 1];
+        const pct = prev ? Math.round((val / prev) * 100) : 0;
+        return `${val}  (${pct}%)`;
+      });
+
+      chartInstances.funnel = new Chart(document.getElementById('chart-funnel'), {
+        type: 'bar',
+        data: {
+          labels: stepLabels,
+          datasets: [{
+            data,
+            backgroundColor: '#810100',
+            borderRadius: 4,
+            barThickness: 22,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { right: 100 } },
+          plugins: {
+            legend: { display: false },
+            barEndLabel: { labels: endLabels }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(27,23,23,0.05)' }, beginAtZero: true, ticks: { font: { size: 11 }, precision: 0 } },
+            y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+          }
+        }
+      });
+    }
+
+    function renderEstadosChart(leads) {
+      destroyChart('estados');
+      const ESTADO_COLORS = [
+        '#810100', '#830000', '#1B1717', '#EDEBDD', 'rgba(27,23,23,0.3)'
+      ];
+      const ESTADO_BORDERS = [
+        '#810100', '#830000', '#1B1717', '#C8AFA0', 'rgba(27,23,23,0.3)'
+      ];
+      const states = ['Nuevo', 'Contactado', 'Llamada agendada', 'Cerrado', 'Descartado'];
+      const counts = states.map(s => leads.filter(l => (l.estado || 'Nuevo') === s).length);
+
+      chartInstances.estados = new Chart(document.getElementById('chart-estados'), {
+        type: 'doughnut',
+        data: {
+          labels: states,
+          datasets: [{
+            data: counts,
+            backgroundColor: ESTADO_COLORS,
+            borderColor: ESTADO_BORDERS,
+            borderWidth: 1.5,
+            hoverOffset: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '62%',
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } }
+          }
+        }
+      });
+
+      document.getElementById('estados-legend').innerHTML = states.map((s, i) => `
+        <div class="chart-legend-item">
+          <div class="chart-legend-dot" style="background:${ESTADO_COLORS[i]};border:1.5px solid ${ESTADO_BORDERS[i]}"></div>
+          <span>${s}&nbsp;<strong style="color:var(--noir)">${counts[i]}</strong></span>
+        </div>`).join('');
+    }
+
+    function renderPaisesChart(leads) {
+      destroyChart('paises');
+      const tally = {};
+      leads.forEach(l => {
+        const c = getCountry(l.whatsapp);
+        tally[c] = (tally[c] || 0) + 1;
+      });
+      const sorted = Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const labels = sorted.map(([c]) => c);
+      const data   = sorted.map(([, n]) => n);
+
+      chartInstances.paises = new Chart(document.getElementById('chart-paises'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            data,
+            backgroundColor: '#810100',
+            borderRadius: 4,
+            barThickness: 22,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { right: 36 } },
+          plugins: {
+            legend: { display: false },
+            barEndLabel: { labels: data.map(String) }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(27,23,23,0.05)' }, beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 }, precision: 0 } },
+            y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+          }
+        }
+      });
     }
 
     /* ── FILTERS ── */
