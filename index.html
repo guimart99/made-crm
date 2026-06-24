@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MADE · CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --cotton: #EDEBDD;
+      --cherry: #810100;
+      --maroon: #830000;
+      --noir: #1B1717;
+      --noir-light: rgba(27, 23, 23, 0.06);
+      --noir-muted: rgba(27, 23, 23, 0.45);
+      --white: #ffffff;
+      --radius: 10px;
+      --shadow: 0 1px 4px rgba(27,23,23,0.08), 0 4px 16px rgba(27,23,23,0.06);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--cotton);
+      color: var(--noir);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── LOGIN ── */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--noir);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 24px;
+    }
+
+    .login-box {
+      background: var(--cotton);
+      border-radius: 16px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .login-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--noir);
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+
+    .login-sub {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--noir-muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 36px;
+    }
+
+    .login-box input[type="password"] {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid rgba(27,23,23,0.15);
+      border-radius: var(--radius);
+      background: var(--white);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      color: var(--noir);
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 12px;
+    }
+
+    .login-box input[type="password"]:focus {
+      border-color: var(--cherry);
+    }
+
+    .login-box button {
+      width: 100%;
+      padding: 14px;
+      background: var(--cherry);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .login-box button:hover { background: var(--maroon); }
+    .login-box button:active { transform: scale(0.98); }
+
+    #login-error {
+      color: var(--cherry);
+      font-size: 13px;
+      margin-top: 10px;
+      min-height: 18px;
+      font-weight: 500;
+    }
+
+    /* ── DASHBOARD ── */
+    #dashboard {
+      display: none;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: var(--noir);
+      color: var(--white);
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-brand {}
+
+    .header-brand .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      line-height: 1;
+    }
+
+    .header-brand .sub {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      margin-top: 2px;
+    }
+
+    .btn-logout {
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.8);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: background 0.2s;
+    }
+
+    .btn-logout:hover {
+      background: rgba(255,255,255,0.14);
+      color: var(--white);
+    }
+
+    /* Main content */
+    .main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px 20px 60px;
+    }
+
+    /* Metrics */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    @media (min-width: 640px) {
+      .metrics-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    .metric-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 20px 18px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--cherry);
+    }
+
+    .metric-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--noir-muted);
+      margin-bottom: 10px;
+    }
+
+    .metric-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--noir);
+      line-height: 1;
+    }
+
+    .metric-sub {
+      font-size: 11px;
+      color: var(--noir-muted);
+      margin-top: 5px;
+    }
+
+    /* Section title */
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--noir);
+      margin-bottom: 14px;
+    }
+
+    /* Filters */
+    .filters-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .filters-bar input,
+    .filters-bar select {
+      padding: 9px 12px;
+      border: 1.5px solid rgba(27,23,23,0.13);
+      border-radius: 7px;
+      background: var(--white);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      color: var(--noir);
+      outline: none;
+      transition: border-color 0.2s;
+      min-width: 0;
+    }
+
+    .filters-bar input:focus,
+    .filters-bar select:focus { border-color: var(--cherry); }
+
+    .filter-search { flex: 1; min-width: 180px; }
+    .filter-select { min-width: 140px; }
+
+    .btn-export {
+      background: var(--noir);
+      color: var(--white);
+      border: none;
+      border-radius: 7px;
+      padding: 9px 18px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: background 0.2s;
+      white-space: nowrap;
+      margin-left: auto;
+    }
+
+    .btn-export:hover { background: var(--cherry); }
+
+    /* Table */
+    .table-wrapper {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+
+    thead th {
+      padding: 13px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--noir-muted);
+      border-bottom: 1.5px solid var(--noir-light);
+      white-space: nowrap;
+    }
+
+    tbody tr:nth-child(even) { background: rgba(27,23,23,0.03); }
+    tbody tr:hover { background: rgba(129,1,0,0.04); }
+
+    tbody td {
+      padding: 13px 14px;
+      font-size: 13px;
+      color: var(--noir);
+      border-bottom: 1px solid var(--noir-light);
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    .td-name { font-weight: 500; }
+
+    .td-email, .td-wa {
+      color: var(--noir-muted);
+      font-size: 12px;
+    }
+
+    .td-wa a {
+      color: #128C7E;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .td-wa a:hover { text-decoration: underline; }
+
+    .badge-info {
+      display: inline-block;
+      background: rgba(129,1,0,0.1);
+      color: var(--cherry);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      letter-spacing: 0.04em;
+    }
+
+    .estado-select {
+      padding: 6px 10px;
+      border: 1.5px solid rgba(27,23,23,0.13);
+      border-radius: 6px;
+      background: var(--white);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      color: var(--noir);
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+      min-width: 140px;
+    }
+
+    .estado-select:focus { border-color: var(--cherry); }
+
+    .estado-select.saving { opacity: 0.5; pointer-events: none; }
+
+    /* Estado color chips */
+    .estado-select[data-estado="Nuevo"] { border-color: #94a3b8; }
+    .estado-select[data-estado="Contactado"] { border-color: #3b82f6; }
+    .estado-select[data-estado="Llamada agendada"] { border-color: #f59e0b; }
+    .estado-select[data-estado="Cerrado"] { border-color: #22c55e; }
+    .estado-select[data-estado="Descartado"] { border-color: #ef4444; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--noir-muted);
+    }
+
+    .empty-state p { font-size: 14px; margin-top: 8px; }
+
+    /* Loading spinner */
+    .loading-row td {
+      text-align: center;
+      padding: 48px !important;
+      color: var(--noir-muted);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 22px; height: 22px;
+      border: 2px solid rgba(129,1,0,0.2);
+      border-top-color: var(--cherry);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-bottom: 10px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--noir);
+      color: var(--white);
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 1000;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #toast.error { background: var(--cherry); }
+
+    /* Result count */
+    .result-count {
+      font-size: 12px;
+      color: var(--noir-muted);
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 480px) {
+      .login-box { padding: 36px 24px; }
+      .main { padding: 20px 14px 48px; }
+      .header { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── LOGIN SCREEN ── -->
+  <div id="login-screen">
+    <div class="login-box">
+      <div class="login-logo">MADE · CRM</div>
+      <div class="login-sub">AM Agency</div>
+      <input type="password" id="pw-input" placeholder="Contraseña" autocomplete="current-password" />
+      <button id="btn-login">Entrar</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
+  <!-- ── DASHBOARD ── -->
+  <div id="dashboard">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-brand">
+        <div class="logo">MADE · CRM</div>
+        <div class="sub">AM Agency</div>
+      </div>
+      <button class="btn-logout" id="btn-logout">Cerrar sesión</button>
+    </header>
+
+    <main class="main">
+
+      <!-- Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Total Leads</div>
+          <div class="metric-value" id="m-total">—</div>
+          <div class="metric-sub">registrados</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Solicitaron Info</div>
+          <div class="metric-value" id="m-info">—</div>
+          <div class="metric-sub">solicito_info = true</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Leads Hoy</div>
+          <div class="metric-value" id="m-today">—</div>
+          <div class="metric-sub" id="m-today-date">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Tasa de Conversión</div>
+          <div class="metric-value" id="m-rate">—</div>
+          <div class="metric-sub">solicito info / total</div>
+        </div>
+      </div>
+
+      <!-- Filters + Export -->
+      <div class="section-title">Leads</div>
+      <div class="filters-bar">
+        <input
+          type="text"
+          class="filter-search"
+          id="filter-search"
+          placeholder="Buscar por nombre o email…"
+        />
+        <select class="filter-select" id="filter-estado">
+          <option value="">Todos los estados</option>
+          <option value="Nuevo">Nuevo</option>
+          <option value="Contactado">Contactado</option>
+          <option value="Llamada agendada">Llamada agendada</option>
+          <option value="Cerrado">Cerrado</option>
+          <option value="Descartado">Descartado</option>
+        </select>
+        <select class="filter-select" id="filter-info">
+          <option value="">Todos</option>
+          <option value="true">Solo con info</option>
+        </select>
+        <button class="btn-export" id="btn-export">↓ Exportar CSV</button>
+      </div>
+
+      <div class="result-count" id="result-count"></div>
+
+      <!-- Table -->
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>WhatsApp</th>
+              <th>Fecha de registro</th>
+              <th>Info solicitada</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="leads-body">
+            <tr class="loading-row">
+              <td colspan="6">
+                <div class="spinner"></div>
+                <div>Cargando leads…</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <script>
+    /* ── CONFIG ── */
+    const SUPABASE_URL = 'https://zggckdkddbwbkauttvjg.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_SoY16PJjYYL-VDmbjIslug_qMa28aB9';
+    const PASSWORD = 'made2026';
+
+    /* ── STATE ── */
+    let allLeads = [];
+    let filteredLeads = [];
+
+    /* ── AUTH ── */
+    const loginScreen = document.getElementById('login-screen');
+    const dashboard = document.getElementById('dashboard');
+    const pwInput = document.getElementById('pw-input');
+    const loginError = document.getElementById('login-error');
+
+    function login() {
+      if (pwInput.value === PASSWORD) {
+        loginScreen.style.display = 'none';
+        dashboard.style.display = 'block';
+        sessionStorage.setItem('crm_auth', '1');
+        initDashboard();
+      } else {
+        loginError.textContent = 'Contraseña incorrecta';
+        pwInput.value = '';
+        pwInput.focus();
+        setTimeout(() => { loginError.textContent = ''; }, 3000);
+      }
+    }
+
+    document.getElementById('btn-login').addEventListener('click', login);
+    pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      sessionStorage.removeItem('crm_auth');
+      loginScreen.style.display = 'flex';
+      dashboard.style.display = 'none';
+      pwInput.value = '';
+    });
+
+    // Auto-restore session
+    if (sessionStorage.getItem('crm_auth') === '1') {
+      loginScreen.style.display = 'none';
+      dashboard.style.display = 'block';
+      initDashboard();
+    }
+
+    /* ── SUPABASE HELPERS ── */
+    async function sbFetch(path, options = {}) {
+      const url = `${SUPABASE_URL}/rest/v1/${path}`;
+      const res = await fetch(url, {
+        ...options,
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': options.prefer || '',
+          ...(options.headers || {})
+        }
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err);
+      }
+      if (res.status === 204) return null;
+      return res.json();
+    }
+
+    async function fetchLeads() {
+      return sbFetch('leads?select=*&order=created_at.desc');
+    }
+
+    async function patchLeadEstado(id, estado) {
+      return sbFetch(`leads?id=eq.${id}`, {
+        method: 'PATCH',
+        prefer: 'return=minimal',
+        body: JSON.stringify({ estado })
+      });
+    }
+
+    /* ── DASHBOARD INIT ── */
+    async function initDashboard() {
+      // Ensure estado column exists (best-effort; migration should be run separately)
+      try {
+        allLeads = await fetchLeads();
+        renderMetrics(allLeads);
+        applyFilters();
+      } catch (err) {
+        showToast('Error al cargar leads: ' + err.message, true);
+        document.getElementById('leads-body').innerHTML =
+          `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--noir-muted)">Error al conectar con Supabase.</td></tr>`;
+      }
+    }
+
+    /* ── METRICS ── */
+    function renderMetrics(leads) {
+      const today = new Date().toISOString().slice(0, 10);
+
+      const total = leads.length;
+      const withInfo = leads.filter(l => l.solicito_info).length;
+      const todayLeads = leads.filter(l => l.created_at && l.created_at.startsWith(today)).length;
+      const rate = total ? ((withInfo / total) * 100).toFixed(1) + '%' : '0%';
+
+      document.getElementById('m-total').textContent = total;
+      document.getElementById('m-info').textContent = withInfo;
+      document.getElementById('m-today').textContent = todayLeads;
+      document.getElementById('m-today-date').textContent = formatDate(new Date()).split(' ')[0];
+      document.getElementById('m-rate').textContent = rate;
+    }
+
+    /* ── FILTERS ── */
+    const filterSearch = document.getElementById('filter-search');
+    const filterEstado = document.getElementById('filter-estado');
+    const filterInfo = document.getElementById('filter-info');
+
+    filterSearch.addEventListener('input', applyFilters);
+    filterEstado.addEventListener('change', applyFilters);
+    filterInfo.addEventListener('change', applyFilters);
+
+    function applyFilters() {
+      const q = filterSearch.value.toLowerCase().trim();
+      const estado = filterEstado.value;
+      const infoOnly = filterInfo.value;
+
+      filteredLeads = allLeads.filter(l => {
+        if (q) {
+          const name = (l.nombre || '').toLowerCase();
+          const email = (l.email || '').toLowerCase();
+          if (!name.includes(q) && !email.includes(q)) return false;
+        }
+        if (estado && l.estado !== estado) return false;
+        if (infoOnly === 'true' && !l.solicito_info) return false;
+        return true;
+      });
+
+      document.getElementById('result-count').textContent =
+        filteredLeads.length === allLeads.length
+          ? `${allLeads.length} leads`
+          : `${filteredLeads.length} de ${allLeads.length} leads`;
+
+      renderTable(filteredLeads);
+    }
+
+    /* ── TABLE ── */
+    function formatDate(d) {
+      const date = d instanceof Date ? d : new Date(d);
+      if (isNaN(date)) return '—';
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const yyyy = date.getFullYear();
+      const hh = String(date.getHours()).padStart(2, '0');
+      const min = String(date.getMinutes()).padStart(2, '0');
+      return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+    }
+
+    const ESTADOS = ['Nuevo', 'Contactado', 'Llamada agendada', 'Cerrado', 'Descartado'];
+
+    function renderTable(leads) {
+      const tbody = document.getElementById('leads-body');
+
+      if (!leads.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <div style="font-size:28px">📋</div>
+                <p>No se encontraron leads con los filtros actuales.</p>
+              </div>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = leads.map(lead => {
+        const estado = lead.estado || 'Nuevo';
+        const estadoOptions = ESTADOS.map(e =>
+          `<option value="${e}" ${e === estado ? 'selected' : ''}>${e}</option>`
+        ).join('');
+
+        const waNum = (lead.whatsapp || '').replace(/\D/g, '');
+        const waLink = waNum
+          ? `<a href="https://wa.me/${waNum}" target="_blank" rel="noopener">${lead.whatsapp}</a>`
+          : `<span style="color:var(--noir-muted)">—</span>`;
+
+        return `
+          <tr>
+            <td class="td-name">${escHtml(lead.nombre || '—')}</td>
+            <td class="td-email">${escHtml(lead.email || '—')}</td>
+            <td class="td-wa">${waLink}</td>
+            <td>${formatDate(lead.created_at)}</td>
+            <td style="text-align:center">
+              ${lead.solicito_info ? '<span class="badge-info">✓</span>' : ''}
+            </td>
+            <td>
+              <select
+                class="estado-select"
+                data-id="${lead.id}"
+                data-estado="${estado}"
+                onchange="onEstadoChange(this)"
+              >${estadoOptions}</select>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function onEstadoChange(sel) {
+      const id = sel.dataset.id;
+      const estado = sel.value;
+      sel.classList.add('saving');
+      sel.dataset.estado = estado;
+
+      try {
+        await patchLeadEstado(id, estado);
+        // Update in-memory
+        const lead = allLeads.find(l => String(l.id) === String(id));
+        if (lead) lead.estado = estado;
+        showToast('Estado actualizado');
+      } catch (err) {
+        showToast('Error al guardar: ' + err.message, true);
+        // Revert
+        const lead = allLeads.find(l => String(l.id) === String(id));
+        if (lead) sel.value = lead.estado || 'Nuevo';
+      } finally {
+        sel.classList.remove('saving');
+        sel.style.borderColor = '';
+        // Retrigger color update
+        sel.dataset.estado = sel.value;
+      }
+    }
+
+    /* ── EXPORT CSV ── */
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const rows = [
+        ['Nombre', 'Email', 'WhatsApp', 'Fecha de registro', 'Info solicitada', 'Estado']
+      ];
+      filteredLeads.forEach(l => {
+        rows.push([
+          l.nombre || '',
+          l.email || '',
+          l.whatsapp || '',
+          formatDate(l.created_at),
+          l.solicito_info ? 'Sí' : 'No',
+          l.estado || 'Nuevo'
+        ]);
+      });
+      const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leads_made_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('CSV exportado');
+    });
+
+    /* ── TOAST ── */
+    let toastTimer;
+    const toast = document.getElementById('toast');
+
+    function showToast(msg, isError = false) {
+      toast.textContent = msg;
+      toast.className = 'show' + (isError ? ' error' : '');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.className = ''; }, 2800);
+    }
+
+    /* ── UTILS ── */
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>
