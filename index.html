@@ -627,7 +627,7 @@
           type="text"
           class="filter-search"
           id="filter-search"
-          placeholder="Buscar por nombre o email…"
+          placeholder="Buscar por nombre, email o instagram…"
         />
         <select class="filter-select" id="filter-estado">
           <option value="">Todos los estados</option>
@@ -663,6 +663,7 @@
               <th>Nombre</th>
               <th>Email</th>
               <th>WhatsApp</th>
+              <th>Instagram</th>
               <th>Fecha de registro</th>
               <th>Info solicitada</th>
               <th>Estado</th>
@@ -671,7 +672,7 @@
           </thead>
           <tbody id="leads-body">
             <tr class="loading-row">
-              <td colspan="8">
+              <td colspan="9">
                 <div class="spinner"></div>
                 <div>Cargando leads…</div>
               </td>
@@ -797,7 +798,7 @@
       } catch (err) {
         showToast('Error al cargar leads: ' + err.message, true);
         document.getElementById('leads-body').innerHTML =
-          `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--noir-muted)">Error al conectar con Supabase.</td></tr>`;
+          `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--noir-muted)">Error al conectar con Supabase.</td></tr>`;
       }
     }
 
@@ -1084,7 +1085,8 @@
         if (q) {
           const name = (l.nombre || '').toLowerCase();
           const email = (l.email || '').toLowerCase();
-          if (!name.includes(q) && !email.includes(q)) return false;
+          const instagram = (l.instagram || '').toLowerCase();
+          if (!name.includes(q) && !email.includes(q) && !instagram.includes(q)) return false;
         }
         if (estado && l.estado !== estado) return false;
         if (infoOnly === 'true' && !l.solicito_info) return false;
@@ -1119,7 +1121,7 @@
       if (!leads.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="8">
+            <td colspan="9">
               <div class="empty-state">
                 <div style="font-size:28px">📋</div>
                 <p>No se encontraron leads con los filtros actuales.</p>
@@ -1147,6 +1149,7 @@
             <td class="td-name">${escHtml(lead.nombre || '—')}</td>
             <td class="td-email">${escHtml(lead.email || '—')}</td>
             <td class="td-wa">${waLink}</td>
+            <td class="td-email">${escHtml(lead.instagram || '—')}</td>
             <td>${formatDate(lead.created_at)}</td>
             <td style="text-align:center">
               ${lead.solicito_info ? '<span class="badge-info">✓</span>' : ''}
@@ -1264,13 +1267,14 @@
     /* ── EXPORT CSV ── */
     document.getElementById('btn-export').addEventListener('click', () => {
       const rows = [
-        ['Nombre', 'Email', 'WhatsApp', 'Fecha de registro', 'Info solicitada', 'Estado']
+        ['Nombre', 'Email', 'WhatsApp', 'Instagram', 'Fecha de registro', 'Info solicitada', 'Estado']
       ];
       filteredLeads.forEach(l => {
         rows.push([
           l.nombre || '',
           l.email || '',
           l.whatsapp || '',
+          l.instagram || '',
           formatDate(l.created_at),
           l.solicito_info ? 'Sí' : 'No',
           l.estado || 'Nuevo'
