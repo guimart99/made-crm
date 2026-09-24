@@ -641,6 +641,10 @@
           <option value="">Todos</option>
           <option value="true">Solo con info</option>
         </select>
+        <select class="filter-select" id="filter-campana">
+          <option value="">Todas las campañas</option>
+          <option value="clase_29_sept">Clase 29 sept</option>
+        </select>
         <button class="btn-export" id="btn-export">↓ Exportar CSV</button>
       </div>
 
@@ -665,6 +669,7 @@
               <th>WhatsApp</th>
               <th>Instagram</th>
               <th>Fecha de registro</th>
+              <th>Campaña</th>
               <th>Info solicitada</th>
               <th>Estado</th>
               <th style="width:44px"></th>
@@ -672,7 +677,7 @@
           </thead>
           <tbody id="leads-body">
             <tr class="loading-row">
-              <td colspan="9">
+              <td colspan="10">
                 <div class="spinner"></div>
                 <div>Cargando leads…</div>
               </td>
@@ -798,7 +803,7 @@
       } catch (err) {
         showToast('Error al cargar leads: ' + err.message, true);
         document.getElementById('leads-body').innerHTML =
-          `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--noir-muted)">Error al conectar con Supabase.</td></tr>`;
+          `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--noir-muted)">Error al conectar con Supabase.</td></tr>`;
       }
     }
 
@@ -1071,15 +1076,18 @@
     const filterSearch = document.getElementById('filter-search');
     const filterEstado = document.getElementById('filter-estado');
     const filterInfo = document.getElementById('filter-info');
+    const filterCampana = document.getElementById('filter-campana');
 
     filterSearch.addEventListener('input', applyFilters);
     filterEstado.addEventListener('change', applyFilters);
     filterInfo.addEventListener('change', applyFilters);
+    filterCampana.addEventListener('change', applyFilters);
 
     function applyFilters() {
       const q = filterSearch.value.toLowerCase().trim();
       const estado = filterEstado.value;
       const infoOnly = filterInfo.value;
+      const campana = filterCampana.value;
 
       filteredLeads = allLeads.filter(l => {
         if (q) {
@@ -1090,6 +1098,7 @@
         }
         if (estado && l.estado !== estado) return false;
         if (infoOnly === 'true' && !l.solicito_info) return false;
+        if (campana && l.campana !== campana) return false;
         return true;
       });
 
@@ -1115,13 +1124,15 @@
 
     const ESTADOS = ['Nuevo', 'Contactado', 'Llamada agendada', 'Cerrado', 'Descartado'];
 
+    const CAMPANA_LABELS = { clase_29_sept: 'Clase 29 sept' };
+
     function renderTable(leads) {
       const tbody = document.getElementById('leads-body');
 
       if (!leads.length) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="9">
+            <td colspan="10">
               <div class="empty-state">
                 <div style="font-size:28px">📋</div>
                 <p>No se encontraron leads con los filtros actuales.</p>
@@ -1151,6 +1162,7 @@
             <td class="td-wa">${waLink}</td>
             <td class="td-email">${escHtml(lead.instagram || '—')}</td>
             <td>${formatDate(lead.created_at)}</td>
+            <td>${lead.campana ? escHtml(CAMPANA_LABELS[lead.campana] || lead.campana) : '<span style="color:var(--noir-muted)">—</span>'}</td>
             <td style="text-align:center">
               ${lead.solicito_info ? '<span class="badge-info">✓</span>' : ''}
             </td>
@@ -1267,7 +1279,7 @@
     /* ── EXPORT CSV ── */
     document.getElementById('btn-export').addEventListener('click', () => {
       const rows = [
-        ['Nombre', 'Email', 'WhatsApp', 'Instagram', 'Fecha de registro', 'Info solicitada', 'Estado']
+        ['Nombre', 'Email', 'WhatsApp', 'Instagram', 'Fecha de registro', 'Campaña', 'Info solicitada', 'Estado']
       ];
       filteredLeads.forEach(l => {
         rows.push([
@@ -1276,6 +1288,7 @@
           l.whatsapp || '',
           l.instagram || '',
           formatDate(l.created_at),
+          l.campana || '',
           l.solicito_info ? 'Sí' : 'No',
           l.estado || 'Nuevo'
         ]);
